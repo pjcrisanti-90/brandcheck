@@ -146,11 +146,12 @@ async function run(push=true){
   const tlds = TLDS.filter(t => tldOn.has(t));
   try{
     const res = await fetch(`/api/check?name=${encodeURIComponent(name)}&tlds=${tlds.join(",")}&variants=${variants?1:0}`);
-    const data = await res.json();
+    let data;
+    try { data = await res.json(); } catch { throw new Error("The server didn't respond properly — it may be waking up. Try again in a moment."); }
     if (data.error) throw new Error(data.error);
     render(data);
   }catch(err){
-    $("#out").innerHTML = `<div class="card">Something went wrong: ${esc(err.message)}. Is the BrandCheck server still running?</div>`;
+    $("#out").innerHTML = `<div class="card">${esc(err.message || "Something went wrong — please try again.")}</div>`;
   }
 }
 

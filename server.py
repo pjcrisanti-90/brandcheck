@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """BrandCheck — local fashion brand name vetting tool.
 
-Run:  python3 server.py   then open http://localhost:8765
+Run locally:  python3 server.py   then open http://localhost:8765
+In the cloud it reads PORT from the environment and listens on all interfaces.
 No third-party packages required.
 """
 import json
+import os
+import threading
+from collections import deque
 import socket
 import time
 import re
@@ -18,7 +22,11 @@ from urllib.parse import urlparse, parse_qs, quote
 
 from vetting import vet_name
 
-PORT = 8765
+PORT = int(os.environ.get("PORT", "8765"))
+HOST = "0.0.0.0" if "PORT" in os.environ else "127.0.0.1"
+RATE_LIMIT = int(os.environ.get("RATE_LIMIT", "20"))    # checks per visitor...
+RATE_WINDOW = int(os.environ.get("RATE_WINDOW", "600"))  # ...per this many seconds
+CACHE_TTL = 900  # seconds a result is reused for identical searches
 ROOT = Path(__file__).parent
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/130 Safari/537.36")
@@ -182,6 +190,42 @@ def check_all(name, tlds, variants, handle_override=None):
     }
 
 
+_lock = threading.Lock()
+_hits = {}    # ip -> deque of request timestamps
+_cache = {}   # key -> (timestamp, result)
+
+
+def allow(ip):
+    now = time.time()
+    with _lock:
+        q = _hits.setdefault(ip, deque())
+        while q and now - q[0] > RATE_WINDOW:
+            q.popleft()
+        if len(q) >= RATE_LIMIT:
+            return False
+        q.append(now)
+        if len(_hits) > 10000:  # drop idle visitors
+            for k in [k for k, v in _hits.items() if not v]:
+                del _hits[k]
+        return True
+
+
+def cached_check(name, tlds, variants, handle):
+    key = (name.lower(), tuple(tlds), variants, handle)
+    now = time.time()
+    with _lock:
+        hit = _cache.get(key)
+        if hit and now - hit[0] < CACHE_TTL:
+            return hit[1], True
+    result = check_all(name, tlds, variants, handle)
+    with _lock:
+        if len(_cache) > 500:
+            for k in sorted(_cache, key=lambda k: _cache[k][0])[:100]:
+                del _cache[k]
+        _cache[key] = (now, result)
+    return result, False
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(ROOT / "static"), **kw)
@@ -199,8 +243,17 @@ class Handler(SimpleHTTPRequestHandler):
             variants = (q.get("variants") or ["0"])[0] == "1"
             handle = (q.get("handle") or [""])[0].strip()
             handle = re.sub(r"[^a-zA-Z0-9._]", "", handle)[:30] or None
-            body = json.dumps(check_all(name, tlds, variants, handle)).encode()
-            self.send_response(200)
+            fwd = self.headers.get("X-Forwarded-For", "")
+            ip = fwd.split(",")[0].strip() or self.client_address[0]
+            key = (name.lower(), tuple(tlds), variants, handle)
+            if key in _cache and time.time() - _cache[key][0] < CACHE_TTL:
+                result, status = _cache[key][1], 200  # cached answers are free
+            elif not allow(ip):
+                result, status = {"error": "You've run a lot of checks — please wait a few minutes and try again."}, 429
+            else:
+                result, status = cached_check(name, tlds, variants, handle)[0], 200
+            body = json.dumps(result).encode()
+            self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
@@ -210,5 +263,5 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"BrandCheck running → http://localhost:{PORT}")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    print(f"BrandCheck running → http://localhost:{PORT}", flush=True)
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

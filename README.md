@@ -10,6 +10,14 @@ python3 server.py
 
 Then open http://localhost:8765. Python 3.9+ only, no packages to install.
 
+## Host it
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/pjcrisanti-90/brandcheck)
+
+`render.yaml` sets up a free Render web service. Every push to `main` redeploys it. On the free plan the app sleeps after 15 minutes without visitors, so the first search after that takes about a minute.
+
+Each visitor gets 20 checks per 10 minutes. Change `RATE_LIMIT` and `RATE_WINDOW` in Render's environment settings to adjust that. Identical searches are cached for 15 minutes and don't count against the limit.
+
 ## How it checks
 
 | Area | Method | Reliability |

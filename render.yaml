@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: brandcheck
+    runtime: python
+    plan: free
+    buildCommand: echo "No dependencies to install"
+    startCommand: python3 server.py
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: RATE_LIMIT
+        value: "20"
+      - key: RATE_WINDOW
+        value: "600"
