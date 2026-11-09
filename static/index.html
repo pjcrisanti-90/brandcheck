@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrandCheck</title>
+<style>
+:root{
+  --bg:#fafaf8; --card:#fff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e7e5e0;
+  --accent:#1a1a1a; --good:#1f8a4c; --good-bg:#e8f5ec; --bad:#c0392b; --bad-bg:#fbeaea;
+  --warn:#b7791f; --warn-bg:#fdf3e1; --neutral-bg:#f0efeb;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#121212;--card:#1c1c1c;--ink:#f0f0f0;--muted:#9a9a9a;--line:#2e2e2e;--accent:#f0f0f0;
+  --good:#4fc47f;--good-bg:#173323;--bad:#ef6f61;--bad-bg:#3a1c1a;--warn:#e7b04d;--warn-bg:#3a2d14;--neutral-bg:#262626}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);min-height:100vh}
+a{color:inherit}
+.hero{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:78vh;padding:16px;transition:min-height .35s ease}
+body.has-results .hero{min-height:0;padding-top:28px;padding-bottom:8px}
+.logo{font-family:"Didot","Bodoni 72",Georgia,serif;font-size:56px;letter-spacing:.5px;margin:0 0 6px;font-weight:400}
+body.has-results .logo{font-size:30px}
+.tag{color:var(--muted);margin:0 0 28px;font-size:15px}
+body.has-results .tag{display:none}
+form{width:100%;max-width:620px}
+.box{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 8px 6px 22px;box-shadow:0 1px 6px rgba(0,0,0,.06);transition:box-shadow .2s}
+.box:focus-within{box-shadow:0 2px 14px rgba(0,0,0,.12)}
+.box input{flex:1;border:0;outline:0;background:transparent;color:var(--ink);font-size:18px;padding:10px 0;min-width:0}
+.box button{border:0;background:var(--accent);color:var(--bg);border-radius:999px;padding:11px 20px;font-size:15px;cursor:pointer;font-weight:600}
+.opts{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;user-select:none;color:var(--muted)}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.recent{margin-top:18px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;font-size:13px;color:var(--muted)}
+.recent span.r{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+body.has-results .recent{display:none}
+
+main{max-width:960px;margin:0 auto;padding:12px 16px 80px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:0 0 14px;font-weight:600}
+.summary{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center}
+.ring{width:132px;height:132px;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .n{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .n b{font-size:38px;line-height:1}
+.ring .n small{color:var(--muted);font-size:12px;margin-top:4px}
+.verdict{font-family:"Didot","Bodoni 72",Georgia,serif;font-size:34px;margin:0 0 4px}
+.verdict-sub{color:var(--muted);margin:0 0 14px}
+.bars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.bar label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}
+.bar .t{height:6px;background:var(--neutral-bg);border-radius:9px;overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:9px}
+.bar b{font-size:14px;display:block;margin-top:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.rows{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:15px}
+.row:first-child{border-top:0}
+.row .l{display:flex;flex-direction:column;min-width:0}
+.row .l small{color:var(--muted);font-size:12px}
+.row .l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap;text-decoration:none}
+.p-available{background:var(--good-bg);color:var(--good)}
+.p-taken{background:var(--bad-bg);color:var(--bad)}
+.p-likely,.p-medium{background:var(--warn-bg);color:var(--warn)}
+.p-unknown,.p-manual{background:var(--neutral-bg);color:var(--muted)}
+.p-high{background:var(--bad-bg);color:var(--bad)}
+.note{color:var(--muted);font-size:13px;line-height:1.5;margin:12px 0 0}
+.flag{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;margin-bottom:8px;font-size:14px}
+.flag.good{background:var(--good-bg)} .flag.bad{background:var(--bad-bg)} .flag.warn{background:var(--warn-bg)}
+.links{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.links a{border:1px solid var(--line);padding:8px 12px;border-radius:10px;font-size:13px;text-decoration:none}
+.links a:hover{border-color:var(--ink)}
+.links a.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.classes{display:flex;flex-wrap:wrap;gap:6px}
+.cls{font-size:12px;border:1px solid var(--line);border-radius:8px;padding:6px 9px}
+.cls b{margin-right:4px}
+.cls.core{border-color:var(--ink)}
+ul.plain{margin:0;padding-left:18px;font-size:14px;line-height:1.7}
+.loading{text-align:center;color:var(--muted);padding:40px 0}
+.dots::after{content:"";animation:d 1.2s infinite}
+@keyframes d{0%{content:""}33%{content:"."}66%{content:".."}100%{content:"..."}}
+.disclaimer{color:var(--muted);font-size:12px;text-align:center;max-width:640px;margin:24px auto 0;line-height:1.5}
+@media (max-width:720px){
+  .summary{grid-template-columns:1fr;justify-items:center;text-align:center}
+  .bars{grid-template-columns:repeat(2,1fr)}
+  .grid2{grid-template-columns:1fr}
+  .logo{font-size:42px}
+}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1 class="logo">BrandCheck</h1>
+  <p class="tag">Vet a fashion brand name — trademark risk, domains, and handles in one search.</p>
+  <form id="f" autocomplete="off">
+    <div class="box">
+      <input id="q" placeholder="Enter a brand name…" autofocus>
+      <button type="submit">Check</button>
+    </div>
+    <div class="opts" id="tlds"></div>
+  </form>
+  <div class="recent" id="recent"></div>
+</div>
+<main id="out"></main>
+
+<script>
+const TLDS = ["com","co","shop","store","studio","clothing","fashion","boutique","style","la","nyc","io"];
+const DEFAULT_ON = ["com","co","shop","store","studio","clothing"];
+const store = {
+  get(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch{ return d } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
+};
+let tldOn = new Set(store.get("tlds", DEFAULT_ON));
+let variants = store.get("variants", true);
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function renderChips(){
+  $("#tlds").innerHTML = TLDS.map(t => `<span class="chip ${tldOn.has(t)?"on":""}" data-t="${t}">.${t}</span>`).join("")
+    + `<span class="chip ${variants?"on":""}" data-v="1">+ name variations</span>`;
+}
+$("#tlds").addEventListener("click", e => {
+  const c = e.target.closest(".chip"); if(!c) return;
+  if (c.dataset.v) { variants = !variants; store.set("variants", variants); }
+  else { tldOn.has(c.dataset.t) ? tldOn.delete(c.dataset.t) : tldOn.add(c.dataset.t); store.set("tlds",[...tldOn]); }
+  renderChips();
+});
+function renderRecent(){
+  const r = store.get("recent", []);
+  $("#recent").innerHTML = r.length ? "Recent: " + r.map(n => `<span class="r">${esc(n)}</span>`).join(" · ") : "";
+}
+$("#recent").addEventListener("click", e => { if(e.target.classList.contains("r")){ $("#q").value = e.target.textContent; run(); }});
+
+$("#f").addEventListener("submit", e => { e.preventDefault(); run(); });
+window.addEventListener("popstate", () => { const n = new URLSearchParams(location.search).get("q"); if(n){ $("#q").value=n; run(false);} });
+
+async function run(push=true){
+  const name = $("#q").value.trim();
+  if(!name) return;
+  document.body.classList.add("has-results");
+  if (push) history.pushState({}, "", "?q=" + encodeURIComponent(name));
+  const r = store.get("recent", []).filter(x => x.toLowerCase() !== name.toLowerCase());
+  store.set("recent", [name, ...r].slice(0, 8));
+  $("#out").innerHTML = `<div class="loading">Checking registries, trademarks and social platforms for <b>${esc(name)}</b><span class="dots"></span></div>`;
+  const tlds = TLDS.filter(t => tldOn.has(t));
+  try{
+    const res = await fetch(`/api/check?name=${encodeURIComponent(name)}&tlds=${tlds.join(",")}&variants=${variants?1:0}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    render(data);
+  }catch(err){
+    $("#out").innerHTML = `<div class="card">Something went wrong: ${esc(err.message)}. Is the BrandCheck server still running?</div>`;
+  }
+}
+
+function color(v){ return v>=70 ? "var(--good)" : v>=45 ? "var(--warn)" : "var(--bad)"; }
+function pill(status){
+  const label = {available:"Available", taken:"Taken", likely:"Likely available", unknown:"Check", manual:"Check manually"}[status] || status;
+  return `<span class="pill p-${status}">${label}</span>`;
+}
+
+function render(d){
+  const v = d.vetting;
+  const exactDomains = d.domains.filter(x => x.domain.startsWith(d.slug + "."));
+  const variantDomains = d.domains.filter(x => !x.domain.startsWith(d.slug + "."));
+  const com = d.domains.find(x => x.domain === d.slug + ".com");
+  const avail = s => s === "available" ? 1 : s === "likely" ? .6 : 0;
+  // Domain score: .com matters most, then any other exact TLD, then a variation.
+  let domScore = com ? avail(com.status) * 70 : 0;
+  const anyExact = exactDomains.filter(x => x !== com).some(x => avail(x.status) > 0);
+  const anyVar = variantDomains.some(x => avail(x.status) > 0);
+  domScore += (anyExact ? 20 : 0) + (anyVar ? 10 : 0);
+  domScore = Math.min(100, domScore);
+  const checkedH = d.handles.filter(h => ["available","taken"].includes(h.status));
+  const handleScore = checkedH.length ? Math.round(100 * checkedH.filter(h=>h.status==="available").length / checkedH.length) : 50;
+  const tmScore = v.overall;
+  const total = Math.round(tmScore*0.6 + domScore*0.2 + handleScore*0.2);
+  const capped = tmScore <= 25 ? Math.min(total, 30) : total;
+
+  const verdict = capped>=75 ? "Strong contender" : capped>=55 ? "Viable, with work" : capped>=35 ? "Risky" : "Avoid";
+  const verdictSub = tmScore<=25 ? "Trademark issues outweigh everything else."
+    : domScore<40 && handleScore<40 ? "Legally promising, but the name is crowded online — plan on modifiers (e.g. “shop”, “studio”)."
+    : domScore<40 ? "Good name, but you'll need a domain variation."
+    : handleScore<40 ? "Good name, but most handles are taken."
+    : "Clear on the basics — confirm with a full trademark search.";
+
+  const C = 2*Math.PI*56;
+  const ring = `<div class="ring"><svg width="132" height="132"><circle cx="66" cy="66" r="56" fill="none" stroke="var(--neutral-bg)" stroke-width="10"/>
+    <circle cx="66" cy="66" r="56" fill="none" stroke="${color(capped)}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-capped/100)}"/></svg>
+    <div class="n"><b>${capped}</b><small>viability</small></div></div>`;
+  const bar = (label, val, txt) => `<div class="bar"><label>${label}</label><div class="t"><i style="width:${val}%;background:${color(val)}"></i></div><b>${txt ?? val}</b></div>`;
+
+  const conflicts = v.conflicts.length
+    ? v.conflicts.map(c => `<div class="flag ${c.severity==="high"?"bad":"warn"}"><span class="pill p-${c.severity}">${c.severity==="high"?"High risk":"Watch"}</span><div><b>${esc(c.brand)}</b> — ${esc(c.reason)}</div></div>`).join("")
+    : `<div class="flag good"><span class="pill p-available">Clear</span><div>No conflicts with ~250 major fashion & beauty brands in the built-in list.</div></div>`;
+
+  const strengthTxt = {"generic":"Generic","descriptive":"Descriptive","suggestive":"Suggestive","coined/arbitrary":"Coined / arbitrary","arbitrary":"Arbitrary"}[v.strength.level];
+  const tmLinks = d.trademark_links.map((l,i) => `<a class="${i===0?"primary":""}" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)} ↗</a>`).join("");
+
+  const domRow = x => `<div class="row"><div class="l"><span>${esc(x.domain)}</span></div>
+    ${x.status==="available"||x.status==="likely" ? `<a class="pill p-${x.status}" href="${esc(x.buy)}" target="_blank" rel="noopener">${x.status==="likely"?"Likely available":"Available"} — buy ↗</a>` : `<a href="${esc(x.whois)}" target="_blank" rel="noopener" style="text-decoration:none">${pill(x.status)}</a>`}</div>`;
+  const hRow = h => `<div class="row"><div class="l"><span>${esc(h.platform)}</span><small>@${esc(h.handle)}</small></div>
+    <a href="${esc(h.url)}" target="_blank" rel="noopener" style="text-decoration:none">${pill(h.status)}</a></div>`;
+
+  $("#out").innerHTML = `
+  <div class="card"><div class="summary">${ring}
+    <div><p class="verdict">${esc(d.name)} — ${verdict}</p><p class="verdict-sub">${verdictSub}</p>
+    <div class="bars">${bar("Trademark", tmScore)}${bar("Domains", domScore)}${bar("Handles", handleScore)}${bar("Memorability", v.memorability.score)}</div></div>
+  </div></div>
+
+  <div class="card"><h2>Trademark</h2>
+    <div class="flag ${v.strength.score>=80?"good":v.strength.score>=50?"warn":"bad"}"><span class="pill p-${v.strength.score>=80?"available":v.strength.score>=50?"medium":"high"}">${strengthTxt}</span><div>${esc(v.strength.note)}</div></div>
+    ${conflicts}
+    <p class="note">Search the official registers before you commit — look for identical or similar-sounding marks in the classes below:</p>
+    <div class="links">${tmLinks}</div>
+    <h2 style="margin-top:22px">Classes to file in</h2>
+    <div class="classes">${v.classes.map(c => `<span class="cls ${c.core?"core":""}"><b>${c.cls}</b>${esc(c.label)}${c.core?" · core":""}</span>`).join("")}</div>
+    <p class="note">For a clothing brand, Class 25 (goods) and Class 35 (retail store) are the core filings. USPTO fees run about $350 per class (2025 schedule).</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h2>Domains</h2><div class="rows">${exactDomains.map(domRow).join("")}</div>
+      ${variantDomains.length ? `<h2 style="margin-top:20px">Variations</h2><div class="rows">${variantDomains.map(domRow).join("")}</div>`:""}
+      <p class="note">“Likely available” means the registry didn't respond but the domain has no DNS records — confirm at checkout.</p>
+    </div>
+    <div class="card"><h2>Social handles</h2><div class="rows">${d.handles.map(hRow).join("")}</div>
+      <p class="note">Instagram and Threads hide profiles from logged-out checks — tap to verify. Taken handles may be inactive; a trademark registration can help you claim them later.</p>
+    </div>
+  </div>
+
+  <div class="card"><h2>Name quality</h2>
+    <p style="margin:0 0 10px;font-size:14px">${v.memorability.length} characters · ${v.memorability.syllables} syllable${v.memorability.syllables>1?"s":""}</p>
+    <ul class="plain">${v.memorability.notes.map(n=>`<li>${esc(n)}</li>`).join("")}</ul>
+  </div>
+  <p class="disclaimer">BrandCheck is a screening tool, not legal advice. A clear result here doesn't guarantee registrability — have a trademark attorney run a full clearance search before you invest in branding.</p>`;
+}
+
+renderChips(); renderRecent();
+const initial = new URLSearchParams(location.search).get("q");
+if (initial){ $("#q").value = initial; run(false); }
+</script>
+</body>
+</html>
